@@ -1,0 +1,114 @@
+!/bin/bash
+
+read -p "Please enter the domain: " DOMAIN
+read -p "What type of hosting shared/reseller/dedicated: " HOSTING
+read -p "Does the migration include email yes/no/remote: " EMAIL
+read -p "Are the domain nameservers external or internal: " NAMESERVERS
+IPADDRESS=$(dig +short $DOMAIN @localhost | tail -n1)
+
+echo "
+Hi,
+
+I've finished migrating the $DOMAIN website. You can view the result using this Website Preview link:
+(This link is valid for 24 hours. Do NOT log in to the website backend as an Admin using this link, as it can break the site.)
+
+### run this to generate preview - /root/ukd/tools/web-preview/generate-all $DOMAIN
+
+Please thoroughly check the website, including any email/contact functionality.
+### (Note that ReCAPTCHA doesn't like our Preview domain, so to test the Contact page you may need to edit your computer's Hosts file - as described further below.)
+"
+
+if [ "$EMAIL" == "yes" ]; then
+    echo "
+### You should also perform a Mail Sync now, to copy the emails across - see below.
+"
+fi
+
+if [ "$HOSTING" == "shared" ] && [ "$EMAIL" == "yes" ]; then
+    echo "
+Mail Sync
+---------
+
+### You should perform a Mail Sync now, to copy the emails across, and again after DNS has fully propagated, to catch any emails that were delivered to the old account.
+You can do that by logging into the GURU portal (https://my.guru.co.uk), then at the top click on 'Migration' (next to Help & Support), then click on Migration Mail Sync, finally enter the email details, including the old IMAP server (which is ###), and then click on Begin Sync.
+
+### More details here:
+https://my.guru.co.uk/kb/migration-info/migrating-email-to-guru
+### If there is a need to check for any urgent emails, then I suggest also checking the old host's Webmail service.
+"
+fi
+
+if [ "$NAMESERVERS" == "external" ]; then
+    echo "
+Making DNS changes
+------------------
+
+If you are happy with the results, then you can change the A record(s) of the website (on the current nameservers) to point to:
+$IPADDRESS
+
+###"
+else
+    if [ "$NAMESERVERS" == "internal" ]; then
+        echo "
+[CHANGING TO OUR NAMESERVERS]
+If you are happy with the results, then you can change the nameservers to be ours (at the registrar of the domain):
+https://my.guru.co.uk/kb/getting-started/guru-nameservers
+
+### Optionally, you can speed-up website DNS propagation by also changing the A record(s) of the website, on the old nameservers, to point to:
+$IPADDRESS
+"
+    fi
+fi
+
+echo "
+Waiting for DNS changes to take effect
+"
+
+if [ "$NAMESERVERS" == "internal" ]; then
+    echo "
+If you only change the nameservers, then it will take those DNS changes 72 hours to fully propagate, although it may propagate to some devices before that.
+But if you also change the website A record(s), then the website DNS changes should only take 8 hours to propagate to most devices.
+
+It will take those DNS changes 72 hours to fully propagate, although it may propagate to some devices before that.
+"
+fi
+
+if [ "$NAMESERVERS" == "external" ]; then
+    echo "
+While those DNS changes should only take 8 hours to propagate it may propagate to some devices before that."
+fi
+
+if [ "$EMAIL" == "remote" ]; then
+echo "
+### Note that I have copied the main email DNS records, so email should continue to work using our nameservers.
+"
+fi
+
+if [ "$EMAIL" == "yes" ] && [ "$HOSTING" == "shared" ]; then
+echo "
+Email users will also need to change their incoming (POP/IMAP) & outgoing (SMTP) mail servers to:
+mail2.guru.net.uk
+And if they are not using SSL, then they will need to change to that & ensure they are using the corresponding ports - see here for more details:
+https://my.guru.co.uk/kb/email/guru-email-server-settings
+"
+fi
+
+if [ "$EMAIL" == "yes" ] && [ "$HOSTING" == "reseller" ]; then
+echo "
+[RESELLER DESTINATION]
+### Email users will need to connect to the incoming & outgoing mail servers using SSL and the correct ports (if they don't already).
+### And if they connect to "###mail3.gridhost.co.uk" then they will need to change that to "$(hostname)".
+You can get more details from the cPanel account, by clicking on Email Accounts, and then on Connected Devices.
+"
+fi
+
+echo "
+Editing your Hosts file
+
+If you wish to login to the website backend (as an Admin) before the DNS has propagated to you
+or before making the DNS changes,
+then you will need to temporarily edit your computer's Hosts file:
+https://www.howtogeek.com/howto/27350/beginner-geek-how-to-edit-your-hosts-file/
+
+echo "If you have any questions or concerns, please let me know."
+
